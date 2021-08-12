@@ -44,7 +44,7 @@ class JSForIterableStatement(JSBlock):
     operator = ' of '
 
     def emit(self, target, source, body):
-        yield self.line(['for (var ', self.part(target), self.operator,
+        yield self.line(['for (let ', self.part(target), self.operator,
                          source, ') {'])
         yield from self.lines(body, indent=True, delim=True)
         yield self.line('}')
