@@ -10,6 +10,8 @@ import ast
 from unicodedata import lookup
 import re
 
+from metapensiero.pj.js_ast.operators import JSOpDiv
+
 from ..js_ast import (
     JSAssignmentExpression,
     JSAttribute,
@@ -87,8 +89,16 @@ def BinOp_pow(t, x):
                 'pow'),
             [x.left, x.right])
 
+def BinOp_truediv(t, x):
+    if isinstance(x.op, ast.FloorDiv):
+        return JSCall(
+            JSAttribute(
+                JSName('Math'),
+                'floor'),
+            [JSBinOp(x.left, JSOpDiv(), x.right)])
 
-BinOp = [BinOp_pow, BinOp_default]
+
+BinOp = [BinOp_truediv, BinOp_default]
 
 
 # <code>self</code> &rarr; <code>this</code>

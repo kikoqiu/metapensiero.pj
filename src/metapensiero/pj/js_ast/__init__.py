@@ -58,6 +58,7 @@ from .operators import (
     JSOpLtE,
     JSOpMod,
     JSOpMult,
+    JSOpPow,
     JSOpNot,
     JSOpOr,
     JSOpRShift,

@@ -61,6 +61,9 @@ class JSOpMult(JSOperator):
     def emit(self):
         yield self.part('*')
 
+class JSOpPow(JSOperator):
+    def emit(self):
+        yield self.part('**')
 
 class JSOpDiv(JSOperator):
     def emit(self):
