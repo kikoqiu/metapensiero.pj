@@ -517,8 +517,18 @@ def Subscript_slice(t, x):
 
     if isinstance(x.slice, ast.Slice):
         slice = x.slice
-        t.unsupported(x, slice.step and slice.step != 1,
-                      "Slice step is unsupported")
+
+        #t.unsupported(x, slice.step and slice.step != 1,
+        #              "Slice step is unsupported")
+        if slice.step and slice.step != 1:
+            from ..snippets import subscript
+            t.add_snippet(subscript)
+            return JSCall(
+                JSAttribute(
+                    JSName('_pj'),
+                    'subscript'),
+                [slice.lower,slice.upper,slice.step])           
+
         args = []
         if slice.lower:
             args.append(slice.lower)
@@ -528,6 +538,8 @@ def Subscript_slice(t, x):
             args.append(slice.upper)
 
         return JSCall(JSAttribute(x.value, 'slice'), args)
+
+
 
 
 Subscript = [Subscript_slice, Subscript_super, Subscript_default]
