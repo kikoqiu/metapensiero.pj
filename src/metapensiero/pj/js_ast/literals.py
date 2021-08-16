@@ -24,8 +24,9 @@ class JSDict(JSLiteral):
             if i > 0:
                 arr.append(', ')
             arr.append(keys[i])
-            arr.append(': ')
-            arr.append(values[i])
+            if values[i] is not None:
+                arr.append(': ')
+                arr.append(values[i])
         arr.append('}')
         yield self.part(*arr)
 
