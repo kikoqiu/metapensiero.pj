@@ -176,7 +176,8 @@ class Transformer:
 
     def add_snippet(self, func):
         """Add a function to the snippets."""
-        self.snippets.add(func)
+        if self.enable_snippets and not self.snippets is None:
+            self.snippets.add(func)
 
     def _transform_node(self, in_node):
         """Transform a Python AST node to a JS AST node."""
