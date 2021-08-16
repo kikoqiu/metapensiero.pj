@@ -8,6 +8,8 @@
 import ast
 import logging
 
+from metapensiero.pj.js_ast.operators import JSRest
+
 from ..js_ast import JSKeySubscript, JSStr, TargetNode
 
 logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ def _normalize_dict_keys(transformer, keys):
             key = ast.Str(key)
         elif isinstance(key, JSStr):
             key = ast.Str(key.args[0])
-        if not isinstance(key, ast.Str):
+        if not isinstance(key, ast.Str) and not isinstance(key,JSRest):
             if transformer.enable_es6:
                 key = JSKeySubscript(key)
             else:
