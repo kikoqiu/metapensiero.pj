@@ -9,3 +9,5 @@ examples/www/colorflash/bundle.*
 src/.ropeproject
 .coverage*
 dist/
+.vscode
+test

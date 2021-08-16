@@ -8,6 +8,8 @@
 
 import ast
 
+from metapensiero.pj.js_ast.literals import JSList
+
 from ..js_ast import (
     JSAssignmentExpression,
     JSAttribute,
@@ -180,10 +182,15 @@ def For_default(t, x):
 
     """
 
-    t.unsupported(x, not isinstance(x.target, ast.Name), "Target must be a name,"
-                  " Are you sure is only one?")
+    #t.unsupported(x, not isinstance(x.target, ast.Name), "Target must be a name,"
+    #              " Are you sure is only one?")
 
-    name = x.target
+    
+    if isinstance(x.target, ast.Name):
+        names = [x.target]
+    else:
+        names = [i for i in x.target.elts  ]
+
     expr = x.iter
     body = x.body
 
@@ -193,8 +200,8 @@ def For_default(t, x):
 
     return JSForStatement(
         JSVarStatement(
-            [name.id, ix, arr, length],
-            [None, JSNum(0), expr,
+            names + [ ix, arr, length],
+            [None for i in names]+[ JSNum(0), expr,
              JSAttribute(JSName(arr), 'length')],
             unmovable=True
         ),
@@ -210,7 +217,7 @@ def For_default(t, x):
         [
             JSExpressionStatement(
                 JSAssignmentExpression(
-                    JSName(name.id),
+                    JSList(names),
                     JSSubscript(
                         JSName(arr),
                         JSName(ix))))

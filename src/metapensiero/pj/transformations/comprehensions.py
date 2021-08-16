@@ -7,6 +7,10 @@
 #
 
 import ast
+from metapensiero.pj.js_ast.functions import JSArrowFunction
+from metapensiero.pj.js_ast.operators import JSRest
+
+from metapensiero.pj.js_ast.statements import JSYield
 
 from ..js_ast import (
     JSAttribute,
@@ -26,6 +30,10 @@ from ..js_ast import (
     JSSubscript,
     JSThis,
     JSVarStatement,
+    JSForIterableStatement,
+    JSGenFunction,
+    JSKeySubscript,
+    JSExpression,
 )
 
 #### ListComp
@@ -33,7 +41,7 @@ from ..js_ast import (
 # <pre>[EXPR for NAME in LIST]</pre>
 # or
 # <pre>[EXPR for NAME in LIST if CONDITION]</pre>
-def ListComp(t, x):
+def ListComp_x(t, x):
 
     assert len(x.generators) == 1
     assert len(x.generators[0].ifs) <= 1
@@ -122,5 +130,79 @@ def ListComp(t, x):
                 func,
                 'call'),
             [JSThis()])
+
+    return invoked
+
+
+
+#### ListComp
+# Transform
+# <pre>[EXPR for NAME in LIST]</pre>
+# or
+# <pre>[EXPR for NAME in LIST if CONDITION]</pre>
+def ListComp(t, x):    
+    comp = GeneratorExp(t,x,isListComp=True)
+    return comp
+
+def SetComp(t, x):    
+    comp = GeneratorExp(t,x,isListComp=True)
+    from ..snippets import pythonset
+    t.add_snippet(pythonset)
+    ret=JSCall(
+        JSAttribute(
+            JSName('_pj'),
+            'pythonset'),
+        [comp])
+    return ret
+
+#### GeneratorExp
+# Transform
+# <pre>EXPR for NAME in LIST</pre>
+# or
+# <pre>EXPR for NAME in LIST if CONDITION</pre>
+def GeneratorExp(t, x, isListComp=False):
+    from ..snippets import mapg
+    from ..snippets import mapl
+    t.add_snippet(mapg)
+    t.add_snippet(mapl)
+    
+    if isListComp:
+        helper_func=JSAttribute(JSName('_pj'), 'mapg')
+    else:
+        helper_func=JSAttribute(JSName('_pj'), 'mapl')
+    
+    #assert len(x.generators) == 1
+    t.unsupported(x,len(x.generators) > 1,'len(x.generators) > 1')
+    assert len(x.generators[0].ifs) <= 1
+    assert isinstance(x.generators[0], ast.comprehension)
+    #assert isinstance(x.generators[0].target, ast.Name)
+    t.unsupported(x,not isinstance(x.generators[0].target, ast.Name) and not isinstance(x.generators[0].target, ast.Tuple),'not isinstance(x.generators[0].target, ast.Name) and not isinstance(x.generators[0].target, ast.Tuple)')
+
+    EXPR = x.elt
+    NAME = x.generators[0].target
+    LIST = x.generators[0].iter
+    if len(x.generators[0].ifs) == 1:
+        CONDITION = x.generators[0].ifs[0]
+    else:
+        CONDITION = None
+
+    #<pre>NAME=>EXPR</pre>
+    jsmapper=JSArrowFunction(None,[NAME],EXPR,isExpression=True)
+
+    # If needed, we'll wrap that with:
+    #<pre>NAME=>CONDITION</pre>
+    if CONDITION:
+        jsfilter=JSArrowFunction(None,[NAME],CONDITION,isExpression=True)        
+    else:
+        jsfilter=None
+    
+    if jsfilter:
+        invoked = JSCall(
+                helper_func,
+                [LIST,jsmapper,jsfilter])
+    else:
+        invoked = JSCall(
+                helper_func,
+                [LIST,jsmapper])
 
     return invoked

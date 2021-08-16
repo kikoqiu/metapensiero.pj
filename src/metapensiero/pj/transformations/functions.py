@@ -8,6 +8,10 @@
 
 import ast
 from functools import reduce
+from metapensiero.pj.js_ast.expressions import JSSubscript
+from metapensiero.pj.js_ast.literals import JSList
+
+from metapensiero.pj.js_ast.statements import JSLetStatement
 
 
 from ..js_ast import (
@@ -31,6 +35,7 @@ from ..js_ast import (
     JSStatements,
     JSThis,
     JSVarStatement,
+    JSKeySubscript,
 )
 from ..processor.util import body_local_names, walk_under_code_boundary
 
@@ -55,7 +60,10 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
     is_generator = reduce(lambda prev, cur: _isyield(cur) or prev,
                           walk_under_code_boundary(x.body), False)
 
-    t.unsupported(x, not is_method and x.decorator_list, "Function decorators are"
+    #t.unsupported(x, not is_method and x.decorator_list, "Function decorators are"
+    #              " unsupported yet")
+    if not is_method and x.decorator_list:
+        t.warn(x,  "Function decorators are"
                   " unsupported yet")
 
     t.unsupported(x, len(x.decorator_list) > 1, "No more than one decorator"
@@ -66,27 +74,53 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
         t.es6_guard(x, "Arguments definitions other than plain params require "
                     "ES6 to be enabled")
 
-    t.unsupported(x, x.args.kwarg and x.args.kwonlyargs,
-                  "Keyword arguments together with keyword args accumulator"
-                  " are unsupported")
+    #t.unsupported(x, x.args.kwarg and x.args.kwonlyargs,
+    #              "Keyword arguments together with keyword args accumulator"
+    #              " are unsupported")
 
-    t.unsupported(x, x.args.vararg and (x.args.kwonlyargs or x.args.kwarg),
-                  "Having both param accumulator and keyword args is "
-                  "unsupported")
+    #t.unsupported(x, x.args.vararg and (x.args.kwonlyargs or x.args.kwarg),
+    #              "Having both param accumulator and keyword args is "
+    #              "unsupported")
+
+    is_classmethod=False
+    is_staticmethod=False
+    is_getter=False
+    is_setter=False
+    if is_method:
+        if x.decorator_list:
+            # decorator should be "property" or "<name>.setter" or "classmethod" or "staticmethod"
+            fdeco = x.decorator_list[0]
+            if isinstance(fdeco, ast.Name) and fdeco.id == 'property':
+                is_getter=True
+            elif (isinstance(fdeco, ast.Attribute) and  fdeco.attr == 'setter'
+                  and isinstance(fdeco.value, ast.Name)):
+                is_setter=True
+            elif isinstance(fdeco, ast.Name) and (fdeco.id == 'classmethod'  ):
+                is_classmethod=True
+            elif isinstance(fdeco, ast.Name) and (fdeco.id == 'staticmethod' ):
+                is_staticmethod=True
+            else:
+                t.unsupported(x, True, "Unsupported method decorator")
+                
+    from ..snippets import ext_acc
+    t.add_snippet(ext_acc)
+
 
     name = _normalize_name(x.name)
     body = x.body
     # get positional arg names and trim self if present
     arg_names = [arg.arg for arg in x.args.args]
-    if is_method or (len(arg_names) > 0 and arg_names[0] == 'self'):
+    arg_names_ext=[]
+    if is_method or (len(arg_names) > 0 and (arg_names[0] == 'self' or (is_classmethod and arg_names[0] == 'cls'))):
         arg_names = arg_names[1:]
 
 
     acc = JSRest(x.args.vararg.arg) if x.args.vararg else None
+    if x.args.vararg:
+        arg_names_ext.append(x.args.vararg.arg)
     defaults = x.args.defaults
     kw = x.args.kwonlyargs
-    kwdefs = x.args.kw_defaults
-    kw_acc = x.args.kwarg
+    kwdefs = x.args.kw_defaults    
     kw_names = [k.arg for k in kw]
     if kw:
         kwargs = []
@@ -104,9 +138,34 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
     elif defaults is None:
         defaults = [None] * len(arg_names)
 
-    if kw_acc:
-        arg_names += [kw_acc.arg]
-        defaults += [JSDict((), ())]
+    if x.args.kwarg:
+        if kwargs is None:
+            kwargs=[]
+        kwargs.append(JSRest(x.args.kwarg.arg))
+    
+
+    #if kwargs:
+    #    initparamstatement = None#JSLetStatement((kwargs,),(kw_acc,))
+    #else:
+    #    initparamstatement=None
+
+    '''if x.args.vararg or kw_acc or kwargs:
+        allacc=JSName('__pj_acc')
+        allaccrest=JSRest(allacc)
+        ext=JSList([
+            JSName(x.args.vararg.arg) if x.args.vararg else JSName('_'),
+            JSName(kw_acc.arg) if kw_acc else JSName('_'),
+            kwargs if kwargs else JSName('_'),
+            ]
+            )
+        initparamstatement = JSLetStatement((ext,),(
+            JSCall(JSAttribute(JSName('_pj'), 'ext_acc'),[allacc]),))
+    else:
+        allaccrest=None
+        initparamstatement=None
+
+    acc=allaccrest
+    kwargs=None'''
 
     # render defaults of positional arguments and keywords accumulator
     args = []
@@ -122,7 +181,7 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
     else:
         upper_vars = set()
     local_vars = list((set(body_local_names(body)) - set(arg_names)) -
-                      set(kw_names) - upper_vars)
+                      set(kw_names) -set(arg_names_ext) - upper_vars)
     t.ctx['vars'] = upper_vars | set(local_vars)
     if len(local_vars) > 0:
         local_vars.sort()
@@ -130,6 +189,12 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
             JSVarStatement(local_vars, [None] * len(local_vars)),
             *body
         )
+       
+    '''if initparamstatement:
+        body = JSStatements(
+            initparamstatement,
+            *body
+        )'''
 
     if is_generator:
         fwrapper = JSGenFunction
@@ -146,7 +211,7 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
             elif (isinstance(fdeco, ast.Attribute) and  fdeco.attr == 'setter'
                   and isinstance(fdeco.value, ast.Name)):
                 deco = JSSetter
-            elif isinstance(fdeco, ast.Name) and fdeco.id == 'classmethod':
+            elif isinstance(fdeco, ast.Name) and (fdeco.id == 'classmethod' or fdeco.id == 'staticmethod' ):
                 deco = None
                 cls_member_opts['static'] = True
             else:

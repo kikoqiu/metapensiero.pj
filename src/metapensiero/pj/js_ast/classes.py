@@ -29,9 +29,12 @@ class JSClassMember(JSFunction):
             line = ['static ', kind]
         else:
             line = [kind]
-        line += self.fargs(args, acc, kwargs)
+        arg_init=[]
+        line += self.fargs(args, acc, kwargs,arg_init)
         line += ['{']
         yield self.line(line)
+        if arg_init:
+            yield self.line(arg_init, indent=True, delim=True)
         yield from self.lines(body, indent=True, delim=True)
         yield self.line('}')
 

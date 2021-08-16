@@ -65,7 +65,7 @@ def _isdoc(el):
 
 def _class_guards(t, x):
     t.es6_guard(x, "'class' statement requires ES6")
-    t.unsupported(x, len(x.bases) > 1, "Multiple inheritance is not supported")
+    #t.unsupported(x, len(x.bases) > 1, "Multiple inheritance is not supported")
     body = x.body
     for node in body:
         t.unsupported(x, not (isinstance(node,
@@ -76,9 +76,11 @@ def _class_guards(t, x):
         t.unsupported(x, (isinstance(node, ast.Assign) and
                           len(node.targets) > 1),
                       "Assignments must have only one target")
-    if len(x.bases) > 0:
-        assert len(x.bases) == 1
-    assert not x.keywords, "class '{}', args cannot be keywords".format(x.name)
+    #if len(x.bases) > 0:
+    #    assert len(x.bases) == 1
+    #assert not x.keywords, "class '{}', args cannot be keywords".format(x.name)
+    if x.keywords:
+        t.warn(x, "class '{}', args cannot be keywords".format(x.name) )
 
 
 def ClassDef_exception(t, x):
@@ -142,10 +144,15 @@ def ClassDef_default(t, x):
     body = x.body
 
     if len(x.bases) > 0:
-        superclass = x.bases[0]
+        #superclass = x.bases[0]
+        superclass = JSCall(
+                JSAttribute(JSName('_pj'), 'mixin'),
+                x.bases
+            )        
     else:
         superclass = None
-
+    print(x.keywords)
+    
     # strip docs from body
     fn_body = [e for e in body if isinstance(e, (ast.FunctionDef,
                                                  ast.AsyncFunctionDef))]
@@ -157,8 +164,10 @@ def ClassDef_default(t, x):
     # silly check for methods
     for node in fn_body:
         arg_names = [arg.arg for arg in node.args.args]
-        t.unsupported(node, len(arg_names) == 0 or arg_names[0] != 'self',
-                      "First arg on method must be 'self'")
+        is_static_method=node.decorator_list and any(isinstance(d, ast.Name) and d.id=='staticmethod' for d in node.decorator_list)
+        if not is_static_method:
+            t.unsupported(node, len(arg_names) == 0 or (arg_names[0] != 'self' and arg_names[0] != 'cls'),
+                      "First arg on non static method must be 'self' or 'cls'")
 
     # TODO: better express this... find if the constructor has to be the first
     # as per ES6 doc
