@@ -10,6 +10,8 @@
 import ast
 from functools import reduce
 
+from metapensiero.pj.js_ast.expressions import JSNewCall
+
 from ..compat import is_py39
 from . import _normalize_name, _normalize_dict_keys
 
@@ -66,6 +68,7 @@ from ..js_ast import (
     JSWhileStatement,
     JSYield,
     JSYieldStar,
+    JSOpPow,
 )
 
 
@@ -162,6 +165,15 @@ def Tuple(t, x):
 def Dict(t, x):
     return JSDict(_normalize_dict_keys(t, x.keys), x.values)
 
+def Set(t, x):
+    from ..snippets import pythonset
+    t.add_snippet(pythonset)
+    ret=JSCall(
+        JSAttribute(
+            JSName('_pj'),
+            'pythonset'),
+        x.elts)
+    return ret
 
 def Lambda(t, x):
     assert not any(getattr(x.args, k) for k in [
@@ -178,15 +190,37 @@ def IfExp(t, x):
 
 def Call_default(t, x, operator=None):
     # See [pj.transformations.special](special.py) for special cases
+    # TODO: 
+    # def test(a=1,b=1,c=1,*acc,**kwacc):
+    #  pass
+    # test(a=1)?
     kwkeys = []
     kwvalues = []
     if x.keywords:
         for kw in x.keywords:
-            t.unsupported(x, kw.arg is None, "'**kwargs' syntax isn't "
-                          "supported")
-            kwkeys.append(kw.arg)
-            kwvalues.append(kw.value)
+            #t.unsupported(x, kw.arg is None, "'**kwargs' syntax isn't "
+            #              "supported")
+            if kw.arg is None:
+                print(kw.value)
+                kwacc=kw.value
+                #kwkeys.append(JSRest(JSName(kwacc)))
+                kwkeys.append(JSRest(kwacc))
+                kwvalues.append(None)                
+            else:
+                kwkeys.append(kw.arg)
+                kwvalues.append(kw.value)
+
         kwargs = JSDict(_normalize_dict_keys(t, kwkeys), kwvalues)
+
+        from ..snippets import kw
+        t.add_snippet(kw) 
+        
+        kwargs=JSNewCall(
+            JSAttribute(
+                JSName('_pj'),
+                'kw'),
+            [kwargs])
+
     else:
         kwargs = None
     return JSCall(x.func, x.args, kwargs, operator)
@@ -337,6 +371,10 @@ def Mult(t, x):
 
 def Div(t, x):
     return JSOpDiv()
+
+
+def Pow(t, x):
+    return JSOpPow()
 
 
 def Mod(t, x):
