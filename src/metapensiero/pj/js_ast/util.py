@@ -17,17 +17,22 @@ JS_KEYWORDS = set([
     'private', 'protected', 'public', 'short', 'static', 'super',
     'synchronized', 'throws', 'transient', 'volatile'])
 
-JS_KEYWORDS_ES6 = JS_KEYWORDS - set(['delete'])
+JS_KEYWORDS_ES6 = JS_KEYWORDS - set(['delete','int'])
 
 
 def _check_keywords(target_node, name):
     trans = target_node.transformer
     if trans is not None:
-        trans.unsupported(
+        if (name in JS_KEYWORDS_ES6 if trans.enable_es6 else name
+             in JS_KEYWORDS):
+            trans.warn(
+                target_node.py_node,
+                "Name '%s' is reserved in JavaScript." % name)
+        '''trans.unsupported(
             target_node.py_node,
             (name in JS_KEYWORDS_ES6 if trans.enable_es6 else name
              in JS_KEYWORDS),
-            "Name '%s' is reserved in JavaScript." % name)
+            "Name '%s' is reserved in JavaScript." % name)'''
     else:
         if name in JS_KEYWORDS:
             raise ValueError("Name %s is reserved in JavaScript." % name)
