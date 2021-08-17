@@ -8,6 +8,7 @@
 
 import ast
 from metapensiero.pj.js_ast.functions import JSArrowFunction
+from metapensiero.pj.js_ast.literals import JSNull
 from metapensiero.pj.js_ast.operators import JSRest
 
 from metapensiero.pj.js_ast.statements import JSYield
@@ -161,48 +162,49 @@ def SetComp(t, x):
 # or
 # <pre>EXPR for NAME in LIST if CONDITION</pre>
 def GeneratorExp(t, x, isListComp=False):
-    from ..snippets import mapg
-    from ..snippets import mapl
-    t.add_snippet(mapg)
-    t.add_snippet(mapl)
-    
     if isListComp:
-        helper_func=JSAttribute(JSName('_pj'), 'mapg')
+        helper_func=JSAttribute(JSName('_pj'), 'mapl')
     else:
         helper_func=JSAttribute(JSName('_pj'), 'mapl')
     
     #assert len(x.generators) == 1
-    t.unsupported(x,len(x.generators) > 1,'len(x.generators) > 1')
+    #t.unsupported(x,len(x.generators) > 1,'len(x.generators) > 1')
     assert len(x.generators[0].ifs) <= 1
     assert isinstance(x.generators[0], ast.comprehension)
     #assert isinstance(x.generators[0].target, ast.Name)
     t.unsupported(x,not isinstance(x.generators[0].target, ast.Name) and not isinstance(x.generators[0].target, ast.Tuple),'not isinstance(x.generators[0].target, ast.Name) and not isinstance(x.generators[0].target, ast.Tuple)')
+    names=[]
+    mappers=[]
+    filters=[]
+    for i, g in enumerate(x.generators):
+        if i==len(x.generators)-1:
+            EXPR = x.elt
+        else:
+            EXPR = x.generators[i+1].iter
 
-    EXPR = x.elt
-    NAME = x.generators[0].target
-    LIST = x.generators[0].iter
-    if len(x.generators[0].ifs) == 1:
-        CONDITION = x.generators[0].ifs[0]
-    else:
-        CONDITION = None
+        NAME = g.target
+        LIST = g.iter
+        if len(g.ifs) == 1:
+            CONDITION = g.ifs[0]
+        else:
+            CONDITION = None
 
-    #<pre>NAME=>EXPR</pre>
-    jsmapper=JSArrowFunction(None,[NAME],EXPR,isExpression=True)
+        names.append(NAME)
 
-    # If needed, we'll wrap that with:
-    #<pre>NAME=>CONDITION</pre>
-    if CONDITION:
-        jsfilter=JSArrowFunction(None,[NAME],CONDITION,isExpression=True)        
-    else:
-        jsfilter=None
-    
-    if jsfilter:
-        invoked = JSCall(
-                helper_func,
-                [LIST,jsmapper,jsfilter])
-    else:
-        invoked = JSCall(
-                helper_func,
-                [LIST,jsmapper])
+        #<pre>NAME=>EXPR</pre>
+        jsmapper=JSArrowFunction(None,[*names],EXPR,isExpression=True)
+
+        # If needed, we'll wrap that with:
+        #<pre>NAME=>CONDITION</pre>
+        if CONDITION:
+            jsfilter=JSArrowFunction(None,[*names],CONDITION,isExpression=True)        
+        else:
+            jsfilter=JSNull()
+        mappers.append(jsmapper)
+        filters.append(jsfilter)
+
+    invoked = JSCall(
+            helper_func,
+            [x.generators[0].iter,JSList(mappers),JSList(filters)])
 
     return invoked

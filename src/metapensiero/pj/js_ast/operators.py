@@ -109,6 +109,9 @@ class JSOpUSub(JSLeftSideUnaryOp):
     def emit(self):
         yield self.part('-')
 
+class JSOpUAdd(JSLeftSideUnaryOp):
+    def emit(self):
+        yield self.part('+')
 
 class JSOpStrongEq(JSOperator):
     def emit(self):

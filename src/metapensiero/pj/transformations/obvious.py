@@ -56,6 +56,7 @@ from ..js_ast import (
     JSOpRShift,
     JSOpSub,
     JSOpUSub,
+    JSOpUAdd,
     JSPass,
     JSRest,
     JSReturnStatement,
@@ -100,6 +101,12 @@ def Assign_all(t, x):
 
 
 def AugAssign(t, x):
+    if isinstance(x.op, ast.FloorDiv):
+        return JSAssignmentExpression(x.target, JSCall(
+            JSAttribute(
+                JSName('Math'),
+                'floor'),
+            [JSBinOp(x.target, JSOpDiv(), x.value)]) )
     return JSAugAssignStatement(x.target, x.op, x.value)
 
 
@@ -210,11 +217,7 @@ def Call_default(t, x, operator=None):
                 kwkeys.append(kw.arg)
                 kwvalues.append(kw.value)
 
-        kwargs = JSDict(_normalize_dict_keys(t, kwkeys), kwvalues)
-
-        from ..snippets import kw
-        t.add_snippet(kw) 
-        
+        kwargs = JSDict(_normalize_dict_keys(t, kwkeys), kwvalues)        
         kwargs=JSNewCall(
             JSAttribute(
                 JSName('_pj'),
@@ -363,6 +366,10 @@ def Sub(t, x):
 def USub(t, x):
     "Handles tokens like '-1'"
     return JSOpUSub()
+
+def UAdd(t, x):
+    "Handles tokens like '+(1)'"
+    return JSOpUAdd()
 
 
 def Mult(t, x):

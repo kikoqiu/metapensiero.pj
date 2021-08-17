@@ -73,9 +73,9 @@ def _class_guards(t, x):
                                          + assign_types) or
                               _isdoc(node) or isinstance(node, ast.Pass)),
                       "Class' body members must be functions or assignments")
-        t.unsupported(x, (isinstance(node, ast.Assign) and
-                          len(node.targets) > 1),
-                      "Assignments must have only one target")
+        #t.unsupported(x, (isinstance(node, ast.Assign) and
+        #                  len(node.targets) > 1),
+        #              "Assignments must have only one target at line {}".format(node.lineno))
     #if len(x.bases) > 0:
     #    assert len(x.bases) == 1
     #assert not x.keywords, "class '{}', args cannot be keywords".format(x.name)
@@ -166,8 +166,10 @@ def ClassDef_default(t, x):
         arg_names = [arg.arg for arg in node.args.args]
         is_static_method=node.decorator_list and any(isinstance(d, ast.Name) and d.id=='staticmethod' for d in node.decorator_list)
         if not is_static_method:
-            t.unsupported(node, len(arg_names) == 0 or (arg_names[0] != 'self' and arg_names[0] != 'cls'),
-                      "First arg on non static method must be 'self' or 'cls'")
+            if len(arg_names) == 0 or (arg_names[0] != 'self' and arg_names[0] != 'cls'):
+                t.warn(node,"First arg on non static method must be 'self' or 'cls'")
+                #t.unsupported(node, len(arg_names) == 0 or (arg_names[0] != 'self' and arg_names[0] != 'cls'),
+                #        "First arg on non static method must be 'self' or 'cls'")
 
     # TODO: better express this... find if the constructor has to be the first
     # as per ES6 doc
@@ -209,18 +211,20 @@ def ClassDef_default(t, x):
     stmts = [cls]
 
     # prepare assignments mapping as js ast
-    def _from_assign_to_dict_item(e):
-        key = get_assign_targets(e)[0]
-        value = e.value
-        if isinstance(key, ast.Name):
-            rendered_key = ast.Str(_normalize_name(key.id))
-            sort_key = key.id
-        else:
-            rendered_key = key
-            sort_key = '~'
-        return sort_key, rendered_key, value
+    def _from_assign_to_dict_item(r,e):
+        for key in get_assign_targets(e):
+            value = e.value
+            if isinstance(key, ast.Name):
+                rendered_key = ast.Str(_normalize_name(key.id))
+                sort_key = key.id
+            else:
+                rendered_key = key
+                sort_key = '~'
+            r.append((sort_key, rendered_key, value))
+        return r
 
-    assigns = tuple(zip(*sorted(map(_from_assign_to_dict_item, assigns),
+    from functools import reduce
+    assigns = tuple(zip(*sorted(reduce(_from_assign_to_dict_item, assigns,[]),
                                 key=lambda e: e[0])))
 
     # render assignments as properties at runtime

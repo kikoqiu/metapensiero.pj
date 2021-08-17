@@ -67,6 +67,7 @@ from .operators import (
     JSOpSub,
     JSOpTypeof,
     JSOpUSub,
+    JSOpUAdd,
     JSRest,
 )
 

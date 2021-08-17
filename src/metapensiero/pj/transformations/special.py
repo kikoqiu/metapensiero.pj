@@ -89,7 +89,7 @@ def BinOp_pow(t, x):
                 'pow'),
             [x.left, x.right])
 
-def BinOp_truediv(t, x):
+def BinOp_floordiv(t, x):
     if isinstance(x.op, ast.FloorDiv):
         return JSCall(
             JSAttribute(
@@ -98,7 +98,7 @@ def BinOp_truediv(t, x):
             [JSBinOp(x.left, JSOpDiv(), x.right)])
 
 
-BinOp = [BinOp_truediv, BinOp_default]
+BinOp = [BinOp_floordiv, BinOp_default]
 
 
 # <code>self</code> &rarr; <code>this</code>
@@ -167,8 +167,8 @@ def Call_new(t, x):
         # TODO: generalize args mangling and apply here
         # assert not any([x.keywords, x.starargs, x.kwargs])
         subj = x
-    elif isinstance(x.func, ast.Name) and x.func.id == 'new':
-        subj = x.args[0]
+    #elif isinstance(x.func, ast.Name) and x.func.id == 'new':
+    #    subj = x.args[0]
     else:
         subj = None
     if subj:
@@ -184,8 +184,10 @@ def Call_import(t, x):
 
 def Call_type(t, x):
     if (isinstance(x.func, ast.Name) and x.func.id == 'type'):
-        assert len(x.args) == 1
-        return JSCall(JSAttribute(JSName('Object'), 'getPrototypeOf'), x.args)
+        if len(x.args) == 1:
+            return JSCall(JSAttribute(JSName('Object'), 'getPrototypeOf'), x.args)
+        else:
+            return JSCall(JSAttribute(JSName('_pj'), 'type'), x.args)
 
 
 def Call_dict_update(t, x):
@@ -326,7 +328,13 @@ def Call_float(t, x):
             return JSCall(JSName('parseFloat'), x.args)
 
 
-Call = [Call_typeof, Call_callable, Call_isinstance, Call_print, Call_len,
+PY_RUNTIME_FUNC=['range','any','round']
+def Call_runtime(t, x):
+    if isinstance(x.func, ast.Name) and x.func.id in PY_RUNTIME_FUNC:
+        return JSCall(JSAttribute('_pj', x.func.id), x.args)
+
+
+Call = [Call_runtime, Call_typeof, Call_callable, Call_isinstance, Call_print, Call_len,
         Call_JS, Call_new, Call_super, Call_import, Call_str, Call_type,
         Call_dict_update, Call_dict_copy, Call_tagged_template, Call_template,
         Call_hasattr, Call_getattr, Call_setattr, Call_issubclass,

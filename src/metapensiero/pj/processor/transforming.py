@@ -26,7 +26,9 @@ def _pj_snippets(container):
 %(assignments)s
     return container
 
-_pj = {}
+JS('import * as pyruntime from "./pyruntime.js"')
+JS('//import("pyruntime.js").then(m=>m.init())')
+JS('var _pj={...pyruntime}')
 _pj_snippets(_pj)
 
 """
@@ -181,35 +183,50 @@ class Transformer:
 
     def _transform_node(self, in_node):
         """Transform a Python AST node to a JS AST node."""
+        try:
+            if isinstance(in_node, list) or isinstance(in_node, tuple):
+                res = [self._transform_node(child) for child in in_node]
 
-        if isinstance(in_node, list) or isinstance(in_node, tuple):
-            res = [self._transform_node(child) for child in in_node]
+            elif isinstance(in_node, ast.AST):
+                # prepare a context for the transformation if it's a
+                # statement; it's used for example by try...catch stmts to
+                # give hints to raise
+                with self.context_for(in_node):
+                    # transformations can come in tuples or lists, take the
+                    # first one
+                    for transformation in self.transformations.get(
+                            in_node.__class__.__name__, []):
+                        out_node = transformation(self, in_node)
+                        if out_node is not None:
+                            self._finalize_target_node(out_node, py_node=in_node)
+                            res = out_node
+                            break
+                    else:
+                        pnode=in_node
+                        while 'lineno' not in pnode._attributes:
+                            pnode=self.parent_of(pnode)
+                        lineno=pnode.lineno
+                        raise TransformationError(
+                            in_node, "No transformation for the node at Line {}".format(pnode.lineno))
 
-        elif isinstance(in_node, ast.AST):
-            # prepare a context for the transformation if it's a
-            # statement; it's used for example by try...catch stmts to
-            # give hints to raise
-            with self.context_for(in_node):
-                # transformations can come in tuples or lists, take the
-                # first one
-                for transformation in self.transformations.get(
-                        in_node.__class__.__name__, []):
-                    out_node = transformation(self, in_node)
-                    if out_node is not None:
-                        self._finalize_target_node(out_node, py_node=in_node)
-                        res = out_node
-                        break
-                else:
-                    raise TransformationError(
-                        in_node, "No transformation for the node")
+            elif isinstance(in_node, TargetNode):
+                self._finalize_target_node(in_node)
+                res = in_node
+            else:
+                # e.g. an integer
+                res = in_node
+            return res
+        except TransformationError as e:
+            raise
+        except Exception as e:
+            pnode=in_node
+            while 'lineno' not in pnode._attributes:
+                pnode=self.parent_of(pnode)
+            lineno=pnode.lineno
+            raise TransformationError(in_node,'Error happend during _transform_node at line {}'.format(lineno))
+            
 
-        elif isinstance(in_node, TargetNode):
-            self._finalize_target_node(in_node)
-            res = in_node
-        else:
-            # e.g. an integer
-            res = in_node
-        return res
+
 
     def _finalize_target_node(self, tnode, py_node=None):
         tnode.py_node = self.remap_to or py_node or tnode.py_node

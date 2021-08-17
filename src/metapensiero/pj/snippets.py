@@ -87,39 +87,3 @@ def _assert(comp, msg):
     if not comp:
         raise PJAssertionError(msg)
 
-
-
-def mapl(arr, mapper, filter=None):
-    return [*mapg(arr,mapper,filter)]
-        
-
-def mapg(arr, mapper, filter=None):
-    if filter:
-        for a in arr:
-            if filter(a):
-                yield mapper(a)
-    else:
-        for a in arr:
-            yield mapper(a)
-
-def ext_acc(*acc):
-    last=acc[-1]
-    kwargs=None
-    if isinstance(last,_pj.kw):
-        kwargs=last.values
-        return acc[:-1],kwargs
-    return acc,
-
-class kw:
-    def __init__(self, values):
-        self.values = values
-    def setdefault(self,key,val):
-        if not key in self:
-            self[key]=val
-
-
-def pythonset():
-    return JS('new Set()')
-
-def subscript(arr,lower,upper,step):
-    return JS('new subscript()')

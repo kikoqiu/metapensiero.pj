@@ -102,18 +102,19 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
             else:
                 t.unsupported(x, True, "Unsupported method decorator")
                 
-    from ..snippets import ext_acc
-    t.add_snippet(ext_acc)
-
 
     name = _normalize_name(x.name)
     body = x.body
     # get positional arg names and trim self if present
     arg_names = [arg.arg for arg in x.args.args]
     arg_names_ext=[]
-    if is_method or (len(arg_names) > 0 and (arg_names[0] == 'self' or (is_classmethod and arg_names[0] == 'cls'))):
-        arg_names = arg_names[1:]
-
+    
+    initparamstatement=[]
+    if is_method:
+        if len(arg_names) > 0:
+            if not (arg_names[0] == 'self' or (is_classmethod and arg_names[0] == 'cls')):
+               initparamstatement.append(JSLetStatement((arg_names[0],),(JSThis(),)))
+            arg_names = arg_names[1:]
 
     acc = JSRest(x.args.vararg.arg) if x.args.vararg else None
     if x.args.vararg:
@@ -142,30 +143,7 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
         if kwargs is None:
             kwargs=[]
         kwargs.append(JSRest(x.args.kwarg.arg))
-    
 
-    #if kwargs:
-    #    initparamstatement = None#JSLetStatement((kwargs,),(kw_acc,))
-    #else:
-    #    initparamstatement=None
-
-    '''if x.args.vararg or kw_acc or kwargs:
-        allacc=JSName('__pj_acc')
-        allaccrest=JSRest(allacc)
-        ext=JSList([
-            JSName(x.args.vararg.arg) if x.args.vararg else JSName('_'),
-            JSName(kw_acc.arg) if kw_acc else JSName('_'),
-            kwargs if kwargs else JSName('_'),
-            ]
-            )
-        initparamstatement = JSLetStatement((ext,),(
-            JSCall(JSAttribute(JSName('_pj'), 'ext_acc'),[allacc]),))
-    else:
-        allaccrest=None
-        initparamstatement=None
-
-    acc=allaccrest
-    kwargs=None'''
 
     # render defaults of positional arguments and keywords accumulator
     args = []
@@ -185,16 +163,13 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
     t.ctx['vars'] = upper_vars | set(local_vars)
     if len(local_vars) > 0:
         local_vars.sort()
+        initparamstatement.append(JSVarStatement(local_vars, [None] * len(local_vars)))
+        
+    if initparamstatement:
         body = JSStatements(
-            JSVarStatement(local_vars, [None] * len(local_vars)),
+            *initparamstatement,
             *body
         )
-       
-    '''if initparamstatement:
-        body = JSStatements(
-            initparamstatement,
-            *body
-        )'''
 
     if is_generator:
         fwrapper = JSGenFunction
