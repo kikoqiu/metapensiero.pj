@@ -18,11 +18,14 @@ class JSLiteral(JSNode):
 
 
 class JSDict(JSLiteral):
-    def emit(self, keys, values):
+    def emit(self, keys, values,multi_line=False):
         arr = ['{']
         for i in range(len(keys)):
             if i > 0:
                 arr.append(', ')
+            if multi_line:                
+                yield self.line(arr,indent=True) 
+                arr=[]
             arr.append(keys[i])
             if values[i] is not None:
                 arr.append(': ')

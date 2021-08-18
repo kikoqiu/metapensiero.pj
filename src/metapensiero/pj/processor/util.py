@@ -102,11 +102,13 @@ def body_local_names(body):
     """Find the names assigned to in the provided `body`. It doesn't descend
     into function or class subelements."""
     names = set()
+    gnames = set()
     for stmt in body:
         for subn in walk_under_code_boundary(stmt):
             if not isinstance(subn, CODE_BLOCK_STMTS):
                 names |= node_names(subn)
-    return names
+                gnames |=node_gnames(subn)
+    return names-gnames
 
 
 def get_assign_targets(py_node):
@@ -117,6 +119,11 @@ def get_assign_targets(py_node):
     else:
         raise TypeError('Unsupported assign node type: {}'.format(
             py_node.__class__.__name__))
+
+def node_gnames(py_node):
+    if isinstance(py_node, (ast.Global)):
+        return set(py_node.names)
+    return set()
 
 
 def node_names(py_node):

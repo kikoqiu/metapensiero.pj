@@ -10,7 +10,10 @@
 import ast
 from functools import reduce
 
-from metapensiero.pj.js_ast.expressions import JSNewCall
+from metapensiero.pj.js_ast.expressions import JSExpression, JSNewCall
+from metapensiero.pj.js_ast.functions import JSFunction
+from metapensiero.pj.js_ast.noops import JSCommentBlock
+from metapensiero.pj.js_ast.statements import JSLetStatement, JSVarStatement
 
 from ..compat import is_py39
 from . import _normalize_name, _normalize_dict_keys
@@ -100,6 +103,12 @@ def Assign_all(t, x):
                          'Must be a string literal.')])
 
 
+def Assign_setitem(t, x):
+    if len(x.targets) == 1 and isinstance(x.targets[0], ast.Subscript) and isinstance(x.targets[0].slice, ast.ExtSlice):
+        return JSCall(JSAttribute(JSName('_pj'), '__setitem__'), [x.targets[0].value, x.targets[0].slice, x.value])
+
+
+
 def AugAssign(t, x):
     if isinstance(x.op, ast.FloorDiv):
         return JSAssignmentExpression(x.target, JSCall(
@@ -115,8 +124,14 @@ def If(t, x):
 
 
 def While(t, x):
-    assert not x.orelse
-    return JSWhileStatement(x.test, x.body)
+    if not x.orelse:
+        return JSWhileStatement(x.test, x.body)
+    cond=JSName(t.new_name())
+    return JSStatements(
+        JSLetStatement((cond,),(None,)),
+        JSWhileStatement(JSAssignmentExpression(cond, x.test), x.body),
+        JSIfStatement(JSUnaryOp(JSOpNot(), cond),x.orelse,None)
+    )
 
 
 def Break(t, x):
@@ -234,18 +249,31 @@ def Attribute_default(t, x):
 
 
 def Subscript_default(t, x):
-    if is_py39:
-        assert isinstance(x.slice, (ast.Constant, ast.Name))
+    v=None
+    if is_py39 and isinstance(x.slice, (ast.Constant, ast.Name)):
         v = x.slice
-    else:
+    elif isinstance(x.slice, ast.Index):
         v = x.slice.value
-        assert isinstance(x.slice, ast.Index)
-    if isinstance(v, ast.UnaryOp) and isinstance(v.op, ast.USub):
-        return JSSubscript(
-            JSCall(JSAttribute(x.value, 'slice'), [v]),
-            JSNum(0))
-    return JSSubscript(x.value, v)
+    if v:
+        if isinstance(v, ast.UnaryOp) and isinstance(v.op, ast.USub):
+            return JSSubscript(
+                JSCall(JSAttribute(x.value, 'slice'), [v]),
+                JSNum(0))
+        return JSSubscript(x.value, v)
+    return JSCall(JSAttribute(JSName('_pj'), '__getitem__'), [x.value,x.slice])
+         
+def ExtSlice(t,x):
+    return JSList(x.dims)
 
+def Slice(t,x):
+    return JSNewCall(JSAttribute(JSName('_pj'), 'slice'), [
+        JSNull() if x.lower is None else x.lower,
+        JSNull() if x.step is None else x.step,
+        JSNull() if x.upper is None else x.upper
+        ])
+
+def Index(t,x):
+    return JSNum(x.value)
 
 def UnaryOp(t, x):
     return JSUnaryOp(x.op, x.operand)
@@ -277,6 +305,8 @@ def Compare_default(t, x):
 
 
 def Num(t, x):
+    if isinstance(x.n, (complex)):
+        return JSNewCall(JSAttribute(JSName('_pj'),'complex'),[JSStr(str(x.n))])
     return JSNum(x.n)
 
 
@@ -446,3 +476,7 @@ def GtE(t, x):
 
 def Starred(t, x):
     return JSRest(x.value)
+
+def Global(t,x):#
+    #see functions
+    return JSCommentBlock('global '+','.join(x.names))

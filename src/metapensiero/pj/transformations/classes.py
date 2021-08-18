@@ -235,7 +235,7 @@ def ClassDef_default(t, x):
             JSCall(
                 JSAttribute(JSName('_pj'), 'set_properties'),
                 (JSName(name),
-                 JSDict(_normalize_dict_keys(t, assigns[1]), assigns[2])),
+                 JSDict(_normalize_dict_keys(t, assigns[1]), assigns[2],True)),
             )
         )
         stmts.append(assigns)

@@ -55,6 +55,7 @@ from .classes import (
 )
 
 from .obvious import (
+    Assign_setitem,
     Assign_all,
     Assign_default,
     Attribute_default,
@@ -328,7 +329,7 @@ def Call_float(t, x):
             return JSCall(JSName('parseFloat'), x.args)
 
 
-PY_RUNTIME_FUNC=['range','any','round']
+PY_RUNTIME_FUNC=['range','any','round','statcmethod','classmethod']
 def Call_runtime(t, x):
     if isinstance(x.func, ast.Name) and x.func.id in PY_RUNTIME_FUNC:
         return JSCall(JSAttribute('_pj', x.func.id), x.args)
@@ -529,13 +530,7 @@ def Subscript_slice(t, x):
         #t.unsupported(x, slice.step and slice.step != 1,
         #              "Slice step is unsupported")
         if slice.step and slice.step != 1:
-            from ..snippets import subscript
-            t.add_snippet(subscript)
-            return JSCall(
-                JSAttribute(
-                    JSName('_pj'),
-                    'subscript'),
-                [slice.lower,slice.upper,slice.step])           
+            return        
 
         args = []
         if slice.lower:
@@ -599,4 +594,4 @@ def Assign_default_(t, x):
             return JSExportDefault(x.value)
 
 
-Assign = [Assign_all, Assign_default_, Assign_default]
+Assign = [Assign_setitem,Assign_all, Assign_default_, Assign_default]

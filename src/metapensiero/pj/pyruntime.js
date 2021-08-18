@@ -60,7 +60,7 @@ export function mapl(it, mappers, filters){
 	return [...mapg(it,mappers,filters)];
 }
 
-export default function round(a){
+export function round(a){
 	return Math.round(a);
 }
 
@@ -72,7 +72,7 @@ export function ext_acc(...acc) {
 	var kwargs, last;
 	last = acc.slice((- 1))[0];
 	kwargs = null;
-	if ((last instanceof _pj.kw)) {
+	if ((last instanceof kw)) {
 		kwargs = last.values;
 		return [acc.slice(0, (- 1)), kwargs];
 	}
@@ -91,6 +91,9 @@ export class dict {
 export class kw extends dict{
 }
 
+export function staticmethod(f){
+	return f;
+}
 
 
 export function pythonnew(cls,...args){

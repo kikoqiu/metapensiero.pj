@@ -8,6 +8,8 @@
 
 import ast
 
+from metapensiero.pj.js_ast.expressions import JSCall
+
 from ..js_ast import (
     JSBinOp,
     JSIfStatement,
@@ -18,6 +20,7 @@ from ..js_ast import (
     JSThrowStatement,
     JSTryCatchFinallyStatement,
     JSVarStatement,
+    JSAttribute,
 )
 
 from .common import _build_call_isinstance
@@ -86,3 +89,28 @@ def Raise(t, x):
         res = JSThrowStatement(x.exc)
 
     return res
+
+
+
+
+def With(t,x):
+    initparamstatement=[]
+    exitstatements=[]
+    local_vars=[]
+    values=[]
+    for i in x.items:        
+        if i.optional_vars is None:
+            varname=t.new_name()
+        else:
+            varname=i.optional_vars
+        local_vars.append(varname)
+        values.append(i.context_expr)
+    initparamstatement.append(JSVarStatement(local_vars, values))
+    for i in local_vars:
+        initparamstatement.append(JSCall(JSAttribute(JSName('_pj'), '__enter__'), [i]))
+        exitstatements.append(JSCall(JSAttribute(JSName('_pj'), '__exit__'), [i]))
+    body = JSStatements(
+        *initparamstatement,
+        *x.body
+    )
+    return JSTryCatchFinallyStatement(body, None, None, JSStatements(*exitstatements))
