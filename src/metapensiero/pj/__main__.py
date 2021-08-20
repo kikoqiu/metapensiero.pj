@@ -10,6 +10,7 @@ from collections import deque
 import logging
 from pathlib import Path
 import sys
+import os
 
 from . import api
 
@@ -182,6 +183,7 @@ def main(args=None, fout=None, ferr=None):
     else:
         try:
             check_interpreter_supported()
+            runtime_pathes=set()
             for fname in args.files:
                 src = Path(fname)
                 if not src.exists():
@@ -219,12 +221,16 @@ def main(args=None, fout=None, ferr=None):
                                 continue
                             elif spath.suffix == '.py':
                                 try:
+                                    runtime_rela_dir = os.path.relpath(os.path.dirname(spath), os.path.dirname(src))
+                                    runtime_rela_path=os.path.join(runtime_rela_dir, 'pyruntime.js')
+                                    runtime_pathes.add(os.path.join(ddir if ddir else src, runtime_rela_path))
                                     transform(
                                         str(spath),
                                         str(ddir) if ddir else None,
                                         args.es5,
                                         args.es6,
                                         args.stage3,
+                                        runtime_rela_path=runtime_rela_path,
                                         **freeargs
                                     )
                                     rep.print("Compiled file %s" % spath)
@@ -233,8 +239,10 @@ def main(args=None, fout=None, ferr=None):
                                     raise
                 else:
                     try:
+                        runtime_rela_path='./pyruntime.js'
+                        runtime_pathes.add(os.path.join(ddir if ddir else os.path.dirname(src), runtime_rela_path))
                         transform(fname, args.output, args.es5, args.es6,
-                                  args.stage3, **freeargs)
+                                  args.stage3,runtime_rela_path=runtime_rela_path, **freeargs)
                         rep.print("Compiled file %s" % fname)
                     except Exception as e:
                         e.src_fname = fname

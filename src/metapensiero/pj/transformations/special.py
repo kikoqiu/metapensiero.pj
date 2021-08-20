@@ -506,12 +506,12 @@ def Compare_in(t, x):
     if not isinstance(x.ops[0], (ast.NotIn, ast.In)):
         return
     if t.enable_snippets:
-        from ..snippets import _in, in_es6
+        #from ..snippets import _in, in_es6
         if t.enable_es6:
-            t.add_snippet(in_es6)
+            #t.add_snippet(in_es6)
             sname = 'in_es6'
         else:
-            t.add_snippet(_in)
+            #t.add_snippet(_in)
             sname = '_in'
         result = JSCall(JSAttribute('_pj', sname), [x.left, x.comparators[0]])
         if isinstance(x.ops[0], ast.NotIn):
@@ -576,8 +576,8 @@ Attribute = [Attribute_super, Attribute_list_append, Attribute_default]
 def Assert(t, x):
     """Convert ``assert`` statement to just a snippet function call."""
     if t.enable_snippets:
-        from ..snippets import _assert
-        t.add_snippet(_assert)
+        #from ..snippets import _assert
+        #t.add_snippet(_assert)
         return JSCall(JSAttribute('_pj', '_assert'),
                       [x.test, x.msg or JSNull()])
 

@@ -12,6 +12,7 @@ import re
 import textwrap
 import os.path
 
+
 from ..compat import is_py36, assign_types
 from . import sourcemaps
 
@@ -110,6 +111,25 @@ def body_local_names(body):
                 gnames |=node_gnames(subn)
     return names-gnames
 
+def body_all_names(body):
+    """Find the names assigned to in the provided `body`. It doesn't descend
+    into function or class subelements."""
+    names = set()
+    gnames = set()
+    for stmt in body:
+        for subn in walk_under_code_boundary(stmt):
+            if not isinstance(subn, CODE_BLOCK_STMTS):
+                names |= node_names(subn,ignored_=[])
+                gnames |=node_gnames(subn)
+            if isinstance(subn, (ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)) and 'name' in subn._fields:
+                if subn.name is not None:
+                    names.add(subn.name)
+            if isinstance(subn, (ast.Import,ast.ImportFrom)) and 'names' in subn._fields:
+                for n in subn.names:
+                    if n.asname is not None:
+                        names.add(n.asname)
+    return names-gnames
+
 
 def get_assign_targets(py_node):
     if isinstance(py_node, ast.Assign):
@@ -126,7 +146,7 @@ def node_gnames(py_node):
     return set()
 
 
-def node_names(py_node):
+def node_names(py_node,ignored_=IGNORED_NAMES):
     """Extract 'names' from a Python node. Names are all those interesting
     for the enclosing scope.
 
@@ -145,12 +165,12 @@ def node_names(py_node):
     if isinstance(py_node, assign_types):
         for el in get_assign_targets(py_node):
             if isinstance(el, ast.Name) and el.id not in \
-               IGNORED_NAMES:
+               ignored_:
                 names.add(el.id)
             elif isinstance(el, ast.Tuple):
                 for elt in el.elts:
                     if isinstance(elt, ast.Name) and elt.id not in \
-                       IGNORED_NAMES:
+                       ignored_:
                         names.add(elt.id)
     elif isinstance(py_node, (ast.FunctionDef, ast.ClassDef)):
         names.add(py_node.name)

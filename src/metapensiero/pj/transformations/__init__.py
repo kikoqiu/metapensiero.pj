@@ -22,9 +22,15 @@ def _normalize_name(n):
         n = n.replace('dd_', '$$')
     # allow to reference names that are Python's keywords by appending
     # a dash to them
-    elif not n.startswith('_') and n.endswith('_'):
-        n = n[:-1]
+    #elif not n.startswith('_') and n.endswith('_'):
+    #    n = n[:-1]
     return n
+
+attribute_map={'__name__':'name'}
+def _normalize_attribute_name(n):
+    if n in attribute_map:
+        return attribute_map[n]
+    return _normalize_name(n)
 
 def _normalize_dict_keys(transformer, keys):
     res = []

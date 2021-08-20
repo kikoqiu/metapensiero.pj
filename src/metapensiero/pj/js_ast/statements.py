@@ -98,7 +98,7 @@ class JSImport(JSStatement):
 
 class JSDependImport(JSImport):
     def emit(self, module):
-        yield self.line(['System.import(', "'", module, "'", ')'], delim=True)
+        yield self.line(['await _pj.import(', "'./", module, ".js'", ')'], delim=True)
 
 
 class JSNamedImport(JSImport):
@@ -111,18 +111,18 @@ class JSNamedImport(JSImport):
                 js_names.append(self.part(name))
 
         yield self.line(['import {', *delimited(', ', js_names),
-                         "} from '", module, "'"], delim=True)
+                         "} from './", module, ".js'"], delim=True)
 
 
 class JSStarImport(JSImport):
     def emit(self, module, name):
-        yield self.line(['import * as ', name, " from '", module, "'"],
+        yield self.line(['import * as ', name, " from './", module, ".js'"],
                         delim=True)
 
 
 class JSDefaultImport(JSImport):
     def emit(self, module, alias):
-        yield self.line(['import ', alias, " from '", module, "'"], delim=True)
+        yield self.line(['import ', alias, " from ',.", module, ".js'"], delim=True)
 
 
 class JSExport(JSStatement):

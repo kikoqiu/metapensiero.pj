@@ -14,10 +14,12 @@ import sys
 import string
 import textwrap
 
+from metapensiero.pj.js_ast.statements import JSExport
+
 from ..js_ast import TargetNode
 
 from .exceptions import TransformationError, UnsupportedSyntaxError
-from .util import (rfilter, parent_of, obj_source, body_local_names,
+from .util import (body_all_names, rfilter, parent_of, obj_source, body_local_names,
                    walk_under_code_boundary)
 
 SNIPPETS_TEMPLATE = """\
@@ -26,8 +28,7 @@ def _pj_snippets(container):
 %(assignments)s
     return container
 
-JS('import * as pyruntime from "./pyruntime.js"')
-JS('//import("pyruntime.js").then(m=>m.init())')
+JS('import * as pyruntime from "%(runtime_rela_path)s"')
 JS('var _pj={...pyruntime}')
 _pj_snippets(_pj)
 
@@ -45,19 +46,21 @@ class Transformer:
     enable_let = False
     enable_stage3 = False
     disable_srcmap = False
+    disable_auto_export=False
 
     """Used in subtransformation to remap a node on a Transformer instance
     to the AST produced by a substransform."""
     remap_to = None
 
     def __init__(self, py_ast_module, statements_class, snippets=True,
-                 es6=False, stage3=False, remap_to=None):
+                 es6=False, stage3=False, remap_to=None,runtime_rela_path=None):
         self.transformations = load_transformations(py_ast_module)
         self.statements_class = statements_class
         self.enable_snippets = snippets
         self.enable_es6 = es6
         self.enable_stage3 = stage3
         self.remap_to = remap_to
+        self.runtime_rela_path=runtime_rela_path
         self._init_structs()
 
     def _init_structs(self):
@@ -109,7 +112,14 @@ class Transformer:
 
         local_vars = body_local_names(body)
         self.ctx['vars'] = local_vars
+
+        if not self.disable_auto_export:
+            all_names=body_all_names(body)
+            if "__all__" not in all_names:
+                body+=[JSExport(list(all_names))]
+
         result = self.statements_class(*body)
+
         self._finalize_target_node(result)
 
         local_vars = list(local_vars - self._globals)
@@ -248,12 +258,14 @@ class Transformer:
         assign_src = '\n'.join([ASSIGN_TEMPLATE % {'name': n} for n in names])
         trans_src = SNIPPETS_TEMPLATE % {
             'snippets': src,
-            'assignments': assign_src
+            'assignments': assign_src,
+            'runtime_rela_path': ('./'+self.runtime_rela_path.replace('\\','/')) if self.runtime_rela_path else './pyruntime.js'
         }
         t = self.new_from(self)
         t.snippets = None
         t.enable_snippets = False
         t.disable_srcmap = True
+        t.disable_auto_export = True
         return t.transform_code(trans_src)
 
     def add_globals(self, *items):
@@ -293,6 +305,7 @@ class Transformer:
         t.remap_to = remap_to
         t.snippets = None
         t.enable_snippets = False
+        t.disable_auto_export=True
         return t.transform_code(src)
 
     def stage3_guard(self, node, desc):

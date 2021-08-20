@@ -4,7 +4,7 @@
 # :Author:   Alberto Berti <alberto@metapensiero.it>
 # :License:  GNU General Public License version 3 or later
 #
-
+'''
 
 def _in(left, right):
     from __globals__ import Array, typeof
@@ -87,3 +87,4 @@ def _assert(comp, msg):
     if not comp:
         raise PJAssertionError(msg)
 
+'''

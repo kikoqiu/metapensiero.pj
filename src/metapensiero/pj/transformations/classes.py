@@ -229,8 +229,8 @@ def ClassDef_default(t, x):
 
     # render assignments as properties at runtime
     if assigns:
-        from ..snippets import set_properties
-        t.add_snippet(set_properties)
+        #from ..snippets import set_properties
+        #t.add_snippet(set_properties)
         assigns = JSExpressionStatement(
             JSCall(
                 JSAttribute(JSName('_pj'), 'set_properties'),

@@ -59,7 +59,7 @@ def _inline_src_map(src_map):
 
 
 def translate_file(src_filename, dst_filename=None, map_filename=None,
-                   enable_es6=False, enable_stage3=False, inline_map=False):
+                   enable_es6=False, enable_stage3=False, inline_map=False,runtime_rela_path=None):
     """Translate the given python source file to ES6 Javascript."""
     dst_filename, map_filename, src_relpath, map_relpath = _calc_file_names(
         src_filename, dst_filename, map_filename
@@ -67,7 +67,7 @@ def translate_file(src_filename, dst_filename=None, map_filename=None,
     src_text = open(src_filename).readlines()
     js_text, src_map = translates(src_text, True, src_relpath,
                                   enable_es6=enable_es6,
-                                  enable_stage3=enable_stage3)
+                                  enable_stage3=enable_stage3,runtime_rela_path=runtime_rela_path)
     if inline_map:
         js_text += src_map.stringify(inline_comment=True)
     else:
@@ -107,7 +107,7 @@ def translate_object(py_obj, body_only=False, enable_es6=False,
 
 def translates(src_text, dedent=True, src_filename=None, src_offset=None,
                body_only=False, complete_src=None, enable_es6=False,
-               enable_stage3=False):
+               enable_stage3=False,runtime_rela_path=None):
     """Translate the given Python 3 source text to ES6 Javascript.
 
     If the string comes from a file, it's possible to specify the filename
@@ -142,7 +142,7 @@ def translates(src_text, dedent=True, src_filename=None, src_offset=None,
     else:
         dedented = src_text
     t = Transformer(transformations, JSStatements, es6=enable_es6,
-                    stage3=enable_stage3)
+                    stage3=enable_stage3,runtime_rela_path=runtime_rela_path)
     pyast = ast.parse(dedented)
     if body_only and hasattr(pyast, 'body') and len(pyast.body) == 1 \
        and hasattr(pyast.body[0], 'body'):
@@ -155,7 +155,7 @@ def translates(src_text, dedent=True, src_filename=None, src_offset=None,
             pyast.body.pop()
     jsast = t.transform_code(pyast)
     dline_offset = dcol_offset = 0
-    if t.snippets:
+    if True:#t.snippets:
         snipast = t.transform_snippets()
         snipast += jsast
         jsast = snipast
@@ -220,7 +220,7 @@ def transpile_pys(src_text, dedent=True, src_filename=None, src_offset=None,
 
 
 def transpile_py_file(src_filename, dst_filename=None, map_filename=None,
-                      enable_stage3=False, **kw):
+                      enable_stage3=False,runtime_rela_path=None, **kw):
     """Transpile the given Python 3 source file to ES5 Javascript
     using Dukpy and babeljs.
     """
@@ -237,7 +237,7 @@ def transpile_py_file(src_filename, dst_filename=None, map_filename=None,
     src_text = open(src_filename).readlines()
     es6_text, es6_src_map = translates(
         src_text, True, src_relpath, enable_es6=True,
-        enable_stage3=enable_stage3)
+        enable_stage3=enable_stage3,runtime_rela_path=runtime_rela_path)
 
     es5_text, es5_src_map = transpile_es6s(es6_text, es6_relpath,
                                            es6_src_map.encode(),

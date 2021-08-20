@@ -16,7 +16,7 @@ from metapensiero.pj.js_ast.noops import JSCommentBlock
 from metapensiero.pj.js_ast.statements import JSLetStatement, JSVarStatement
 
 from ..compat import is_py39
-from . import _normalize_name, _normalize_dict_keys
+from . import _normalize_name, _normalize_attribute_name,_normalize_dict_keys
 
 from ..js_ast import (
     JSAssignmentExpression,
@@ -188,8 +188,6 @@ def Dict(t, x):
     return JSDict(_normalize_dict_keys(t, x.keys), x.values)
 
 def Set(t, x):
-    from ..snippets import pythonset
-    t.add_snippet(pythonset)
     ret=JSCall(
         JSAttribute(
             JSName('_pj'),
@@ -245,7 +243,7 @@ def Call_default(t, x, operator=None):
 
 
 def Attribute_default(t, x):
-    return JSAttribute(x.value, _normalize_name(str(x.attr)))
+    return JSAttribute(x.value, _normalize_attribute_name(str(x.attr)))
 
 
 def Subscript_default(t, x):

@@ -74,7 +74,7 @@ class JSArrowFunction(JSFunction):
         else:
             line = []
         arg_init=[]
-        line += self.fargs(args, acc, kwargs,arg_init)
+        line += self.fargs(args, acc, kwargs, arg_init)
         line += self.bet_args_n_body
         if isExpression:
             assert not arg_init
