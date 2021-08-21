@@ -8,10 +8,11 @@
 
 import ast
 from functools import reduce
+from metapensiero.pj.js_ast.blocks import JSIfStatement
 from metapensiero.pj.js_ast.expressions import JSSubscript
-from metapensiero.pj.js_ast.literals import JSList
+from metapensiero.pj.js_ast.literals import JSList, JSNum
 
-from metapensiero.pj.js_ast.statements import JSLetStatement
+from metapensiero.pj.js_ast.statements import JSLetStatement, JSReturnStatement
 
 
 from ..js_ast import (
@@ -164,7 +165,13 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
     if len(local_vars) > 0:
         local_vars.sort()
         initparamstatement.append(JSVarStatement(local_vars, [None] * len(local_vars)))
-        
+
+
+    if name == '__init__' and is_method:
+            cls=t.parent_of(x)
+            initvarname='__'+cls.name+'_inited__'            
+            body=[JSIfStatement(JSAttribute(JSThis(),initvarname),JSReturnStatement(None),JSAssignmentExpression(JSAttribute(JSThis(),initvarname),JSNum(1)))]+body
+
     if initparamstatement:
         body = JSStatements(
             *initparamstatement,
@@ -194,7 +201,10 @@ def FunctionDef(t, x, fwrapper=None, mwrapper=None):
         else:
             deco = None
 
-        if name == '__init__':
+
+
+        if False and name == '__init__':
+            #add a constructor to call __init__
             result = JSClassConstructor(
                 args, body, acc, kwargs
             )

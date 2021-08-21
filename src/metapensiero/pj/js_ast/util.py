@@ -28,11 +28,13 @@ def _check_keywords(target_node, name):
             trans.warn(
                 target_node.py_node,
                 "Name '%s' is reserved in JavaScript." % name)
+            return True
         '''trans.unsupported(
             target_node.py_node,
             (name in JS_KEYWORDS_ES6 if trans.enable_es6 else name
              in JS_KEYWORDS),
             "Name '%s' is reserved in JavaScript." % name)'''
+
     else:
         if name in JS_KEYWORDS:
             raise ValueError("Name %s is reserved in JavaScript." % name)

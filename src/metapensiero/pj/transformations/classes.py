@@ -7,6 +7,9 @@
 #
 
 import ast
+from metapensiero.pj.js_ast.literals import JSLiteral
+
+from metapensiero.pj.js_ast.operators import JSRest
 
 from ..compat import assign_types, is_py39
 from ..processor.util import controlled_ast_walk, get_assign_targets
@@ -31,6 +34,7 @@ from ..js_ast import (
     JSSuper,
     JSThis,
     JSUnaryOp,
+    JSClassConstructor,
 )
 
 from .common import _build_call_isinstance
@@ -146,7 +150,7 @@ def ClassDef_default(t, x):
     if len(x.bases) > 0:
         #superclass = x.bases[0]
         superclass = JSCall(
-                JSAttribute(JSName('_pj'), 'mixin'),
+                JSAttribute(JSName('_pj'), '_mixin'),
                 x.bases
             )        
     else:
@@ -203,6 +207,21 @@ def ClassDef_default(t, x):
     # keep class doc if present
     if _isdoc(body[0]):
         fn_body = [body[0]] + fn_body
+    
+    constructor=[]
+    if len(x.bases)>0:
+        constructor.append(JSLiteral('super();'))
+    
+    constructor.append(JSCall(
+                        JSAttribute(JSAttribute(JSAttribute(JSName(x.name), 'prototype'),'__init__'),'apply'),
+                        (JSThis(), JSName('args'),)
+                    ))
+                
+    fn_body=[JSClassConstructor(
+                [JSRest(JSName('args'))],
+                constructor
+            )]+fn_body
+    
 
     # assign incoming pynode to the JSClass for the sourcemap
     cls = JSClass(JSName(name), superclass, fn_body)

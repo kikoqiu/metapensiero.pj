@@ -63,6 +63,23 @@ export function set_properties(cls, props) {
 	}
 }
 
+function copyProperties(target, source) {
+	for (let key of Reflect.ownKeys(source)) {
+	  if ( key !== 'constructor' && key !== 'prototype' && key !== 'name' && !(key in target)) {
+		let desc = Object.getOwnPropertyDescriptor(source, key);
+		Object.defineProperty(target, key, desc);
+	  }
+	}
+  }
+export function _mixin(base,...mixins){
+	let Child=class Tmp extends base{};
+	for(let m of mixins){
+		//copyProperties(Child, m);
+		copyProperties(Child.prototype, m.prototype); 
+	}
+	return Child;
+}
+
 
 export function* mapg(it, mappers, filters){
 	if(mappers.length==1){

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 import sys
 import os
-
+import re
 from . import api
 
 log = logging.getLogger(__name__)
@@ -214,16 +214,18 @@ def main(args=None, fout=None, ferr=None):
                         else:
                             ddir = None
                         for spath in sdir.iterdir():
-                            if spath.name in ('__pycache__', '__init__.py'):
+                            #if spath.name in ('__pycache__', '__init__.py'):
+                            #    continue
+                            if spath.name in ('__pycache__'):
                                 continue
                             elif spath.is_dir():
                                 src_dirs.append(spath)
                                 continue
                             elif spath.suffix == '.py':
                                 try:
-                                    runtime_rela_dir = os.path.relpath(os.path.dirname(spath), os.path.dirname(src))
+                                    runtime_rela_dir = os.path.relpath(os.path.dirname(os.path.abspath(src_root)),os.path.dirname(spath))
                                     runtime_rela_path=os.path.join(runtime_rela_dir, 'pyruntime.js')
-                                    runtime_pathes.add(os.path.join(ddir if ddir else src, runtime_rela_path))
+                                    runtime_pathes.add(os.path.join(dst_root if dst_root else src_root, runtime_rela_path))
                                     transform(
                                         str(spath),
                                         str(ddir) if ddir else None,
@@ -233,6 +235,18 @@ def main(args=None, fout=None, ferr=None):
                                         runtime_rela_path=runtime_rela_path,
                                         **freeargs
                                     )
+                                    if spath.name =='__init__.py':
+                                        cnt=''
+                                        with open(os.path.join(sdir,'__init__.js')) as f:
+                                            cnt=f.read()
+                                            re_import = re.compile(r'(import .*? from) \'(?:\./)?([^\']*?)\'')
+                                            indir=spath.parent.name
+                                            cnt=re_import.sub("\\1 './"+indir+"/\\2'",cnt)
+                                            cnt=cnt.replace('from \'./'+indir+'/../','from \'./')
+                                            cnt=cnt.replace('//# sourceMappingURL=__init__.js.map','//# sourceMappingURL='+indir+'/__init__.js.map')
+                                        dstpath=ddir if ddir else sdir
+                                        with open(str(dstpath)+'.js','wt') as f:
+                                            f.write(cnt)
                                     rep.print("Compiled file %s" % spath)
                                 except Exception as e:
                                     e.src_fname = spath
@@ -240,7 +254,7 @@ def main(args=None, fout=None, ferr=None):
                 else:
                     try:
                         runtime_rela_path='./pyruntime.js'
-                        runtime_pathes.add(os.path.join(ddir if ddir else os.path.dirname(src), runtime_rela_path))
+                        runtime_pathes.add(os.path.join(ddir if ddir else sdir, runtime_rela_path))
                         transform(fname, args.output, args.es5, args.es6,
                                   args.stage3,runtime_rela_path=runtime_rela_path, **freeargs)
                         rep.print("Compiled file %s" % fname)

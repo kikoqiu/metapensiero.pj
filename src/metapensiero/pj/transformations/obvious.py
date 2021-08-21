@@ -208,15 +208,16 @@ def IfExp(t, x):
     return JSIfExp(x.test, x.body, x.orelse)
 
 
-def Call_default(t, x, operator=None):
+def Call_default(t, x, operator=None,override_funcname=None):
     # See [pj.transformations.special](special.py) for special cases
-    # TODO: 
-    # def test(a=1,b=1,c=1,*acc,**kwacc):
-    #  pass
-    # test(a=1)?
-    kwkeys = []
-    kwvalues = []
+
     if x.keywords:
+        # TODO: 
+        # def test(a=1,b=1,c=1,*acc,**kwacc):
+        #  pass
+        # test(a=1)?
+        kwkeys = []
+        kwvalues = []
         for kw in x.keywords:
             #t.unsupported(x, kw.arg is None, "'**kwargs' syntax isn't "
             #              "supported")
@@ -239,7 +240,7 @@ def Call_default(t, x, operator=None):
 
     else:
         kwargs = None
-    return JSCall(x.func, x.args, kwargs, operator)
+    return JSCall(override_funcname or x.func, x.args, kwargs, operator)
 
 
 def Attribute_default(t, x):

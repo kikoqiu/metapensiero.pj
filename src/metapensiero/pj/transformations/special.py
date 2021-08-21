@@ -175,6 +175,26 @@ def Call_new(t, x):
     if subj:
         return Call_default(t, subj, operator='new ')
 
+def Call_prototype(t, x):
+    """Translate ``Foo.test(...)`` to ``Foo.prototype.test(...)`` if Object name starts
+    with a capital letter.
+    """
+    
+    method = t.find_parent(x, ast.FunctionDef, ast.AsyncFunctionDef)
+    if method and isinstance(t.parent_of(method), ast.ClassDef):
+        if method.name == '__init__':
+            def getNameString(x):
+                if isinstance(x, ast.Attribute) and isinstance(x.value, ast.Name):
+                    return str(x.value.id)
+            NAME_STRING = getNameString(x.func)
+            if (NAME_STRING and re.search(r'^[A-Z]', NAME_STRING)):
+                if len(x.args)>0 and isinstance(x.args[0],ast.Name) and len(method.args.args)>0 and method.args.args[0].arg==x.args[0].id:
+                    func=x.func
+                    override_funcname=JSAttribute( JSAttribute(func.value.id,'prototype'),func.attr )
+                    override_funcname=JSAttribute(override_funcname,'bind')
+                    override_funcname=JSCall(override_funcname,[JSThis()])
+                    return Call_default(t, x, override_funcname=override_funcname)
+        
 
 def Call_import(t, x):
     if (isinstance(x.func, ast.Name) and x.func.id == '__import__'):
@@ -339,7 +359,7 @@ Call = [Call_runtime, Call_typeof, Call_callable, Call_isinstance, Call_print, C
         Call_JS, Call_new, Call_super, Call_import, Call_str, Call_type,
         Call_dict_update, Call_dict_copy, Call_tagged_template, Call_template,
         Call_hasattr, Call_getattr, Call_setattr, Call_issubclass,
-        Call_int, Call_float, Call_default]
+        Call_int, Call_float, Call_prototype, Call_default]
 
 
 #### Ops

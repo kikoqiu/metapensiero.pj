@@ -97,8 +97,10 @@ class JSUnaryOp(JSNode):
 
 class JSName(JSNode):
     def emit(self, name):
-        _check_keywords(self, name)
-        yield self.part(name, name=True)
+        if _check_keywords(self, name):
+            yield self.part('_esc_'+name, name=True)
+        else:
+            yield self.part(name, name=True)
 
 
 class JSTaggedTemplate(JSNode):

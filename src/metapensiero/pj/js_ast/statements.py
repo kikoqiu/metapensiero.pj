@@ -98,11 +98,15 @@ class JSImport(JSStatement):
 
 class JSDependImport(JSImport):
     def emit(self, module):
+        if isinstance(module, str) and module.startswith('./'):
+            module=module[2:]
         yield self.line(['await _pj.import(', "'./", module, ".js'", ')'], delim=True)
 
 
 class JSNamedImport(JSImport):
     def emit(self, module, names):
+        if isinstance(module, str) and module.startswith('./'):
+            module=module[2:]
         js_names = []
         for name, alias in sorted(names):
             if alias:
@@ -116,13 +120,17 @@ class JSNamedImport(JSImport):
 
 class JSStarImport(JSImport):
     def emit(self, module, name):
+        if isinstance(module, str) and module.startswith('./'):
+            module=module[2:]
         yield self.line(['import * as ', name, " from './", module, ".js'"],
                         delim=True)
 
 
 class JSDefaultImport(JSImport):
     def emit(self, module, alias):
-        yield self.line(['import ', alias, " from ',.", module, ".js'"], delim=True)
+        if isinstance(module, str) and module.startswith('./'):
+            module=module[2:]
+        yield self.line(['import ', alias, " from './", module, ".js'"], delim=True)
 
 
 class JSExport(JSStatement):

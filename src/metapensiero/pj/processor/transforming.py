@@ -28,7 +28,7 @@ def _pj_snippets(container):
 %(assignments)s
     return container
 
-JS('import * as pyruntime from "%(runtime_rela_path)s"')
+JS("import * as pyruntime from '%(runtime_rela_path)s'")
 JS('var _pj={...pyruntime}')
 _pj_snippets(_pj)
 
